@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-server/
+/data/
+/backups/
+.env
+.env.*
+!.env.example
+.dev.vars*
+*.sqlite*
+*.tsbuildinfo
+.sites-runtime/
+.DS_Store
