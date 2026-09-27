@@ -11,7 +11,7 @@ export async function POST(req:Request){
  try{
   const d=db(),at=now(),started=Date.now();
   const due=await d.prepare("SELECT r.*,b.title FROM reminders r JOIN bets b ON b.id=r.bet_id WHERE r.active=1 AND r.next<=? AND b.status='active' AND b.demo=0 AND (r.lease IS NULL OR r.lease<?) ORDER BY r.next LIMIT 30").bind(at,at).all();
-  const subscriptions=await d.prepare('SELECT * FROM subscriptions').all();
+  const subscriptions=await d.prepare('SELECT * FROM subscriptions WHERE person_id IS NOT NULL').all();
   let sent=0,processed=0,retryPending=0;
   for(const r of due.results){
    if(Date.now()-started>30000)break;
@@ -20,6 +20,7 @@ export async function POST(req:Request){
    if(!claimed.meta.changes)continue;
    let failed=false;
    for(const sub of subscriptions.results){
+    if(!await d.prepare('SELECT id FROM members WHERE bet_id=? AND person_id=?').bind(r.bet_id,sub.person_id).first())continue;
     if(Date.now()-started>30000){failed=true;break;}
     const active=await d.prepare("SELECT r.id FROM reminders r JOIN bets b ON b.id=r.bet_id WHERE r.id=? AND r.active=1 AND b.status='active'").bind(r.id).first();
     if(!active)break;

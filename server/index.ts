@@ -2,8 +2,9 @@ import {createServer} from 'node:http';
 import {readFileSync,statSync} from 'node:fs';
 import {resolve,extname,sep} from 'node:path';
 import {runtime,initRuntime,closeRuntime} from './runtime';
-import {initAuth,authorized,login,logout,cookie} from './auth';
+import {initAuth,authorized,actor,login,logout,cookie} from './auth';
 import {seed} from '../lib/store';
+import * as accounts from './accounts';
 import * as data from '../app/api/data/route';
 import * as avatar from '../app/api/avatar/route';
 import * as push from '../app/api/push/route';
@@ -13,7 +14,7 @@ const origin=new URL(base).origin;process.env.APP_URL=origin;
 if(process.env.NODE_ENV==='production'&&!origin.startsWith('https://'))throw Error('APP_URL doit être une URL HTTPS en production.');
 initAuth();await initRuntime();await seed();
 const limits=new Map<string,{count:number,until:number}>();
-function limited(ip:string){const now=Date.now();for(const [k,v] of limits)if(v.until<now)limits.delete(k);if(limits.size>10000)return true;const v=limits.get(ip)||{count:0,until:now+600000};v.count++;limits.set(ip,v);return v.count>10;}
+function limited(ip:string,max=10){const now=Date.now();for(const [k,v] of limits)if(v.until<now)limits.delete(k);if(limits.size>10000)return true;const v=limits.get(ip)||{count:0,until:now+600000};v.count++;limits.set(ip,v);return v.count>max;}
 const mime:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webmanifest':'application/manifest+json','.woff2':'font/woff2'};
 const root=resolve('dist');
 const routes:Record<string,any>={'/api/data':data,'/api/avatar':avatar,'/api/push':push,'/api/cron':cron};
@@ -29,14 +30,15 @@ const server=createServer(async (incoming,outgoing)=>{try{
  if(url.pathname==='/healthz')response=Response.json({ok:true});
  else if(['POST','DELETE'].includes(method)&&headers.get('origin')&&headers.get('origin')!==origin)response=Response.json({error:'Origine non autorisée.'},{status:403});
  else if(url.pathname==='/api/session'){
-  if(method==='GET')response=Response.json({authorized:await authorized(req)});
+  if(method==='GET')response=Response.json({authorized:await authorized(req),actor:await actor(req)});
   else if(method==='DELETE'){await logout(req);response=Response.json({ok:true},{headers:{'Set-Cookie':cookie('',origin.startsWith('https:'))}});}
   else if(method==='POST'){
    // Only trust Render's client-IP header on Render; direct local connections use socket IP.
    const ip=process.env.RENDER?(headers.get('x-render-client-ip')||incoming.socket.remoteAddress||'unknown'):(incoming.socket.remoteAddress||'unknown');
    if(limited(ip))response=Response.json({error:'Trop de tentatives. Réessaie dans dix minutes.'},{status:429});
-   else {const body:any=await req.json();const t=await login(body.password);response=t?Response.json({ok:true},{headers:{'Set-Cookie':cookie(t,origin.startsWith('https:'))}}):Response.json({error:'Mot de passe incorrect.'},{status:401});}
+   else {const body:any=await req.json();const t=await login(body.username,body.password);response=t?Response.json({ok:true},{headers:{'Set-Cookie':cookie(t,origin.startsWith('https:'))}}):Response.json({error:'Mot de passe incorrect.'},{status:401});}
   }else response=new Response('Method not allowed',{status:405});
+ }else if(url.pathname==='/api/accounts'&&method==='POST'){const ip=incoming.socket.remoteAddress||'unknown';response=limited('account:'+ip,30)?Response.json({error:'Trop de tentatives. Réessaie dans dix minutes.'},{status:429}):await accounts.POST(req);
  }else if(url.pathname.startsWith('/api/')){
   if(url.pathname!=='/api/cron'&&!await authorized(req))response=Response.json({error:'Connecte-toi pour accéder à la bande.'},{status:401});
   else if(!routes[url.pathname])response=new Response('Not found',{status:404});

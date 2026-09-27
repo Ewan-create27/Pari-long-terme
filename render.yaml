@@ -19,5 +19,5 @@ services:
         generateValue: true
       - key: CRON_SECRET
         generateValue: true
-      - key: SEED_DEMO
-        value: "true"
+      - key: INVITE_CODE
+        sync: false
