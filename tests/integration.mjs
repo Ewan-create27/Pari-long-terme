@@ -22,8 +22,10 @@ try{
  await start();assert.equal((await api('/api/data')).status,401);
  assert.equal((await api('/api/session','POST',{password:'incorrect'})).status,401);
  const login=await api('/api/session','POST',{password:'test-password-only-2026'});assert.equal(login.status,200);cookie=login.headers.get('set-cookie').split(';')[0];assert(login.headers.get('set-cookie').includes('HttpOnly'));
- let d=await (await api('/api/data')).json();assert.equal(d.people.length,5);assert(d.pushConfigured);assert.equal(d.schedulerActive,false);
- const bet={title:'Test Neon indépendant',description:'Conditions conservées',icon:'✈️',stake:{type:'none'},members:[{personId:'eva',side:'for'},{personId:'lucas',side:'against'},{personId:'lea',side:'for'}],reminders:[{next:'2035-01-01T00:00:00.000Z',frequency:'monthly',timezone:'Pacific/Noumea'}]};
+ let d=await (await api('/api/data')).json();assert.equal(d.people.length,0);assert.equal(d.bets.length,0);assert(d.pushConfigured);assert.equal(d.schedulerActive,false);
+ const people=[];
+ for(const name of ['Eva','Lucas','Léa','Hugo','Emma'])people.push((await action({action:'person',person:{name,avatar:'😎',color:'#ffe2d5'}})).id);
+ const bet={title:'Test Neon indépendant',description:'Conditions conservées',icon:'✈️',stake:{type:'none'},members:[{personId:people[0],side:'for'},{personId:people[1],side:'against'},{personId:people[2],side:'for'}],reminders:[{next:'2035-01-01T00:00:00.000Z',frequency:'monthly',timezone:'Pacific/Noumea'}]};
  const created=await action({action:'create',bet});
  await action({action:'archiveBet',id:created.id});
  d=await (await api('/api/data')).json();assert.equal(d.bets.find(b=>b.id===created.id).status,'archived');assert.equal(d.bets.find(b=>b.id===created.id).reminders[0].active,0);
