@@ -1,0 +1,35 @@
+name: Vérifier les rappels
+on:
+  schedule:
+    # UTC, une fois par heure. Minute décalée pour éviter la pointe de début d'heure.
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: rappels
+  cancel-in-progress: false
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      APP_URL: ${{ secrets.APP_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Réveiller Render puis traiter les échéances
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$APP_URL" != https://* || ${#CRON_SECRET} -lt 32 ]]; then
+            echo "Ajoute les secrets APP_URL (https) et CRON_SECRET dans Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          # Aucun checkout ni installation : le code s'exécute sur Render.
+          # Le health check n'interroge pas Neon. La limite accepte un démarrage à froid.
+          curl --silent --show-error --fail --proto '=https' \
+            --connect-timeout 20 --max-time 150 \
+            "${APP_URL%/}/healthz" > /dev/null
+          curl --silent --show-error --fail --proto '=https' \
+            --connect-timeout 20 --max-time 90 \
+            --request POST --header "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL%/}/api/cron"
