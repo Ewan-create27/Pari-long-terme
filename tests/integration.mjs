@@ -38,17 +38,19 @@ try{
  async function current(){return (await (await api('/api/data')).json()).bets.find(b=>b.id===id);}
  async function rejected(body){const r=await api('/api/data','POST',body);assert.equal(r.status,400,JSON.stringify(await r.json()));}
  await rejected({action:'create',bet:{...bet,members:[...bet.members,{personId:bob.actor.person_id,side:'against'}]}});
+ await rejected({action:'join',id,side:'against'});await rejected({action:'leave',id});assert.equal((await current()).members[0].side,'for');
  await rejected({action:'resolve',id,result:'for'});await rejected({action:'lock',id,revision:1});
  cookie=bob.cookie;await rejected({action:'archiveBet',id});await rejected({action:'person',id:alice.actor.person_id,person:{name:'Hacked',avatar:'😎',color:'#ffe2d5'}});await rejected({action:'accept',id,revision:1});
  await action({action:'join',id,side:'against'});let b=await current();assert.equal(b.members.length,2);assert.equal(b.acceptances.length,0);assert.equal(b.revision,2);
+ await rejected({action:'join',id,side:'for'});await rejected({action:'leave',id});await action({action:'join',id,side:'against'});b=await current();assert.equal(b.revision,2);assert.equal(b.members.find(m=>m.personId===bob.actor.person_id).side,'against');
  await action({action:'propose',id,revision:2,stake:{type:'reward',text:'Alice offre une médaille aux gagnants.'}});b=await current();assert.equal(b.revision,3);assert.deepEqual(b.acceptances,[bob.actor.person_id]);
  cookie=alice.cookie;await rejected({action:'accept',id,revision:2});await action({action:'accept',id,revision:3});
  cookie=cara.cookie;await action({action:'join',id,side:'for'});b=await current();assert.equal(b.revision,4);assert.equal(b.acceptances.length,0);
  await action({action:'accept',id,revision:4});cookie=bob.cookie;await action({action:'accept',id,revision:4});
- cookie=alice.cookie;await action({action:'accept',id,revision:4});
+ cookie=alice.cookie;await action({action:'reject',id,revision:4});b=await current();assert(b.refusals.includes(alice.actor.person_id));assert(!b.acceptances.includes(alice.actor.person_id));assert.equal(b.members.find(m=>m.personId===alice.actor.person_id).side,'for');await rejected({action:'lock',id,revision:4});await rejected({action:'reject',id,revision:3});await action({action:'accept',id,revision:4});b=await current();assert(!b.refusals.includes(alice.actor.person_id));assert(b.acceptances.includes(alice.actor.person_id));
  // Launch locks roster and terms only after unanimous consent.
  const joined=await api('/api/data','POST',{action:'lock',id,revision:4});assert.equal(joined.status,200);
- cookie=cara.cookie;await rejected({action:'join',id,side:'against'});await rejected({action:'leave',id});await rejected({action:'propose',id,revision:4,stake:{type:'none'}});await rejected({action:'resolve',id,result:'against'});
+ cookie=cara.cookie;await rejected({action:'reject',id,revision:4});await rejected({action:'join',id,side:'against'});await rejected({action:'leave',id});await rejected({action:'propose',id,revision:4,stake:{type:'none'}});await rejected({action:'resolve',id,result:'against'});
  cookie=alice.cookie;await action({action:'archiveBet',id});b=await current();assert.equal(b.status,'archived');assert.equal(b.reminders[0].active,0);await rejected({action:'deleteBet',id});await action({action:'restoreBet',id});
  const image=readFileSync('tests/avatar.jpg');const uploaded=await fetch(origin+'/api/avatar',{method:'POST',headers:{Cookie:cookie,Origin:origin,'Content-Type':'image/jpeg'},body:image});assert.equal(uploaded.status,200);const avatar=(await uploaded.json()).avatar;
  await action({action:'person',id:alice.actor.person_id,person:{name:'Alice',avatar,color:'#ffe2d5'}});assert.equal((await fetch(origin+avatar)).status,401);
@@ -65,7 +67,7 @@ try{
  const hashes=await sql.query('SELECT password_hash,salt FROM accounts');assert(hashes.rows.every(r=>r.password_hash.length===128));assert.equal(new Set(hashes.rows.map(r=>r.salt)).size,4);
  const changed=await api('/api/accounts','POST',{action:'password',currentPassword:'my-personal-password-2026',password:'a-new-personal-password-2026'});assert.equal(changed.status,200);assert.equal((await api('/api/data')).status,401);
  const login=await api('/api/session','POST',{username:'alice',password:'a-new-personal-password-2026'});assert.equal(login.status,200);cookie=login.headers.get('set-cookie').split(';')[0];await api('/api/session','DELETE');assert.equal((await api('/api/data')).status,401);
- console.log('PASS: legacy migration and one-use claims, personal auth, password change/session revocation, ownership guards, solo creation, voluntary three-person camps, unanimous revisioned consent, concurrent proposals, locked terms, archive-only, photos, persistence, external cron, resolution and cancellation.');
+ console.log('PASS: legacy migration and one-use claims, personal auth, password change/session revocation, ownership guards, solo creation, immutable camps and no leave/rejoin bypass, explicit refusal blocking launch, voluntary three-person camps, unanimous revisioned consent, concurrent proposals, locked terms, archive-only, photos, persistence, external cron, resolution and cancellation.');
 }catch(e){console.error(e);throw e;}finally{if(child&&child.exitCode===null)await stop();await sql.end();await socket.stop();
  // Socket close handlers defer their PostgreSQL cleanup to the next event-loop turn.
  await new Promise(resolve=>setImmediate(resolve));

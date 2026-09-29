@@ -19,21 +19,27 @@ await db().transaction(async(d:any)=>{
  const members=(await d.prepare('SELECT person_id,side FROM members WHERE bet_id=?').bind(id).all()).results;
  const mine=members.find((m:any)=>m.person_id===a.person_id);
  const manager=b.creator_id===a.person_id||(!b.creator_id&&secretEqual(body.adminPassword,process.env.ADMIN_PASSWORD!));
- if(['join','leave','propose','accept','withdraw','lock'].includes(body.action)){
+ if(['join','leave','propose','accept','withdraw','reject','lock'].includes(body.action)){
  if(b.status!=='active'||b.phase!=='open')throw Error('Ce pari n’est plus ouvert aux changements.');
  if(['join','propose','lock'].includes(body.action)&&b.deadline&&b.deadline<at.slice(0,10))throw Error('La date limite est dépassée.');
- if(body.action==='join'||body.action==='leave'){
- if(body.action==='leave'){if(b.creator_id===a.person_id)throw Error('Le créateur peut archiver le pari, mais ne peut pas le quitter.');if(!mine)return;await d.prepare('DELETE FROM members WHERE bet_id=? AND person_id=?').bind(id,a.person_id).run();}
- else {const side=z.enum(['for','against']).parse(body.side);if(mine?.side===side)return;if(members.length>=100&&!mine)throw Error('Le pari est complet.');await d.prepare('INSERT INTO members(id,bet_id,person_id,side) VALUES(?,?,?,?) ON CONFLICT(bet_id,person_id) DO UPDATE SET side=EXCLUDED.side').bind(uid(),id,a.person_id,side).run();}
- // The participant list is part of the agreement: changes invalidate every consent.
- await d.prepare('UPDATE bets SET revision=revision+1 WHERE id=?').bind(id).run();await d.prepare('INSERT INTO proposals(id,bet_id,revision,person_id,stake,created) VALUES(?,?,?,?,?,?)').bind(uid(),id,b.revision+1,a.person_id,b.stake,at).run();await d.prepare('DELETE FROM acceptances WHERE bet_id=?').bind(id).run();await event(who.name+(body.action==='leave'?' a quitté le pari':' a choisi le camp '+(body.side==='for'?'Pour':'Contre'))+' · accords à renouveler');return;
+ if(body.action==='leave')throw Error('Ton camp est définitif. Tu peux refuser l’enjeu ou proposer autre chose, sans quitter le pari.');
+ if(body.action==='join'){
+ const side=z.enum(['for','against']).parse(body.side);
+ if(mine){if(mine.side===side)return;throw Error('Ton camp est définitif : tu ne peux plus passer de Pour à Contre, ni l’inverse.');}
+ if(members.length>=100)throw Error('Le pari est complet.');
+ await d.prepare('INSERT INTO members(id,bet_id,person_id,side) VALUES(?,?,?,?)').bind(uid(),id,a.person_id,side).run();
+ await d.prepare('UPDATE bets SET revision=revision+1 WHERE id=?').bind(id).run();
+ await d.prepare('INSERT INTO proposals(id,bet_id,revision,person_id,stake,created) VALUES(?,?,?,?,?,?)').bind(uid(),id,b.revision+1,a.person_id,b.stake,at).run();
+ await d.prepare('DELETE FROM acceptances WHERE bet_id=?').bind(id).run();
+ await event(who.name+' a rejoint définitivement le camp '+(side==='for'?'Pour':'Contre')+' · accords sur l’enjeu à renouveler');return;
  }
  if(!mine)throw Error('Rejoins un camp pour proposer ou accepter un enjeu.');
  if(body.revision!==b.revision)throw Error('Le pari a changé. Actualise son détail avant de confirmer.');
  if(body.action==='propose'){const stake=bet.shape.stake.parse(body.stake);await d.prepare('UPDATE bets SET stake=?,revision=revision+1 WHERE id=?').bind(JSON.stringify(stake),id).run();await d.prepare('INSERT INTO proposals(id,bet_id,revision,person_id,stake,created) VALUES(?,?,?,?,?,?)').bind(uid(),id,b.revision+1,a.person_id,JSON.stringify(stake),at).run();await d.prepare('DELETE FROM acceptances WHERE bet_id=?').bind(id).run();await d.prepare('INSERT INTO acceptances(bet_id,person_id,revision) VALUES(?,?,?)').bind(id,a.person_id,b.revision+1).run();await event(who.name+' a proposé un nouvel enjeu · accords à renouveler');return;}
- if(body.action==='accept'){await d.prepare('INSERT INTO acceptances(bet_id,person_id,revision) VALUES(?,?,?) ON CONFLICT(bet_id,person_id) DO UPDATE SET revision=EXCLUDED.revision').bind(id,a.person_id,b.revision).run();await event(who.name+' accepte la proposition '+b.revision);return;}
+ if(body.action==='accept'){await d.prepare('INSERT INTO acceptances(bet_id,person_id,revision) VALUES(?,?,?) ON CONFLICT(bet_id,person_id) DO UPDATE SET revision=EXCLUDED.revision,accepted=true').bind(id,a.person_id,b.revision).run();await event(who.name+' accepte la proposition '+b.revision);return;}
+ if(body.action==='reject'){await d.prepare('INSERT INTO acceptances(bet_id,person_id,revision,accepted) VALUES(?,?,?,false) ON CONFLICT(bet_id,person_id) DO UPDATE SET revision=EXCLUDED.revision,accepted=false').bind(id,a.person_id,b.revision).run();await event(who.name+' refuse l’enjeu proposé · camp inchangé');return;}
  if(body.action==='withdraw'){await d.prepare('DELETE FROM acceptances WHERE bet_id=? AND person_id=?').bind(id,a.person_id).run();await event(who.name+' a retiré son accord');return;}
- if(!manager)throw Error('Seul le créateur peut lancer le pari.');const accepts=(await d.prepare('SELECT person_id FROM acceptances WHERE bet_id=? AND revision=?').bind(id,b.revision).all()).results;
+ if(!manager)throw Error('Seul le créateur peut lancer le pari.');const accepts=(await d.prepare('SELECT person_id FROM acceptances WHERE bet_id=? AND revision=? AND accepted=true').bind(id,b.revision).all()).results;
  if(!members.some((m:any)=>m.side==='for')||!members.some((m:any)=>m.side==='against')||!members.every((m:any)=>accepts.some((x:any)=>x.person_id===m.person_id)))throw Error('Il faut les deux camps et l’accord de chaque participant.');await d.prepare("UPDATE bets SET phase='locked' WHERE id=?").bind(id).run();await event('Pari lancé · participants et enjeu acceptés par tous');return;
  }
  if(!manager)throw Error(b.creator_id?'Seul le créateur peut gérer ce pari.':'Ce pari ancien nécessite le mot de passe administrateur.');
