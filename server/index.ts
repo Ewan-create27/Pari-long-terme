@@ -4,6 +4,7 @@ import {resolve,extname,sep} from 'node:path';
 import {runtime,initRuntime,closeRuntime} from './runtime';
 import {initAuth,authorized,actor,login,logout,cookie} from './auth';
 import {seed} from '../lib/store';
+import * as recovery from './recovery';
 import * as accounts from './accounts';
 import * as data from '../app/api/data/route';
 import * as avatar from '../app/api/avatar/route';
@@ -17,7 +18,7 @@ const limits=new Map<string,{count:number,until:number}>();
 function limited(ip:string,max=10){const now=Date.now();for(const [k,v] of limits)if(v.until<now)limits.delete(k);if(limits.size>10000)return true;const v=limits.get(ip)||{count:0,until:now+600000};v.count++;limits.set(ip,v);return v.count>max;}
 const mime:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webmanifest':'application/manifest+json','.woff2':'font/woff2'};
 const root=resolve('dist');
-const routes:Record<string,any>={'/api/data':data,'/api/avatar':avatar,'/api/push':push,'/api/cron':cron};
+const routes:Record<string,any>={'/api/recovery':recovery,'/api/data':data,'/api/avatar':avatar,'/api/push':push,'/api/cron':cron};
 const server=createServer(async (incoming,outgoing)=>{try{
  const headers=new Headers();for(const [k,v] of Object.entries(incoming.headers))if(v)headers.set(k,Array.isArray(v)?v.join(', '):v);
  const url=new URL(incoming.url||'/',origin);if(url.origin!==origin){outgoing.writeHead(400);outgoing.end();return;}
@@ -38,6 +39,7 @@ const server=createServer(async (incoming,outgoing)=>{try{
    if(limited(ip))response=Response.json({error:'Trop de tentatives. Réessaie dans dix minutes.'},{status:429});
    else {const body:any=await req.json();const t=await login(body.username,body.password);response=t?Response.json({ok:true},{headers:{'Set-Cookie':cookie(t,origin.startsWith('https:'))}}):Response.json({error:'Mot de passe incorrect.'},{status:401});}
   }else response=new Response('Method not allowed',{status:405});
+ }else if(url.pathname==='/api/recovery'&&method==='POST'){const ip=process.env.RENDER?(headers.get('x-render-client-ip')||incoming.socket.remoteAddress||'unknown'):(incoming.socket.remoteAddress||'unknown');response=limited('recovery:'+ip,30)?Response.json({error:'Trop de tentatives. Réessaie dans dix minutes.'},{status:429}):await recovery.POST(req);
  }else if(url.pathname==='/api/accounts'&&method==='POST'){const ip=incoming.socket.remoteAddress||'unknown';response=limited('account:'+ip,30)?Response.json({error:'Trop de tentatives. Réessaie dans dix minutes.'},{status:429}):await accounts.POST(req);
  }else if(url.pathname.startsWith('/api/')){
   if(url.pathname!=='/api/cron'&&!await authorized(req))response=Response.json({error:'Connecte-toi pour accéder à la bande.'},{status:401});

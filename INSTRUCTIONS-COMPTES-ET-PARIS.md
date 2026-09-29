@@ -78,7 +78,7 @@ Les anciens paris sont conservés comme déjà lancés. Ils n’avaient pas de c
 
 - Chacun modifie uniquement son propre personnage. Consulter le profil d’un ami ne change pas l’identité connectée.
 - **Profil → Modifier mon mot de passe** ferme toutes les sessions du compte après modification.
-- Pour un mot de passe oublié, l’administrateur utilise la section Administration de l’écran de connexion. Il renseigne l’identifiant et un nouveau mot de passe dans le formulaire principal, puis **Réinitialiser l’accès**. Il transmet ce mot de passe à la bonne personne, qui peut le modifier. Pas de récupération par e-mail dans cette version.
+- Pour un mot de passe oublié, l’administrateur utilise la section Administration de l’écran de connexion. Il renseigne l’identifiant et un nouveau mot de passe dans le formulaire principal, puis **Réinitialiser l’accès**. Il transmet ce mot de passe à la bonne personne, qui peut le modifier. La récupération par e-mail est désormais disponible après configuration de Resend et vérification de l’adresse : voir `INSTRUCTIONS-RECUPERATION-EMAIL.md`.
 - Le bouton d’actualisation recharge les paris ; l’application les recharge aussi au retour dans l’onglet. Il n’y a pas de mise à jour instantanée par WebSocket.
 - Chaque appareil doit activer ses notifications depuis Profil. Les rappels sont envoyés uniquement aux membres du pari abonnés aux notifications.
 - Le planificateur externe existant reste nécessaire, avec la même URL `/api/cron` et le même `CRON_SECRET`. La cadence horaire actuelle est conservée.
