@@ -63,8 +63,8 @@ Partage l’URL de l’application et `INVITE_CODE` avec tes amis, jamais `ADMIN
 1. Le créateur choisit **son propre camp**, décrit le pari, propose l’enjeu et les rappels.
 2. Le pari devient **Ouvert**, même si personne n’est encore en face.
 3. Chaque ami peut ouvrir sa fiche, rejoindre Pour ou Contre, ou simplement ne pas participer.
-4. Un participant peut accepter l’enjeu, retirer son accord, faire une contre-proposition, changer de camp ou quitter le pari tant qu’il reste ouvert. Le créateur peut changer de camp ou archiver son pari, mais pas le quitter.
-5. Une contre-proposition remplace l’enjeu à discuter ; son auteur l’accepte en la soumettant. Les autres accords sont remis à zéro. Un changement de participants ou de camps remet également tous les accords à zéro.
+4. Le camp devient définitif dès la création ou la confirmation de participation. Un participant peut accepter ou refuser l’enjeu et proposer autre chose tant que le pari reste ouvert. Il ne peut plus changer de camp ni quitter puis rejoindre le pari. Le créateur peut toujours archiver son pari.
+5. Une contre-proposition remplace l’enjeu à discuter ; son auteur l’accepte en la soumettant. Les autres accords sont remis à zéro. L’arrivée d’un nouveau participant remet également tous les accords à zéro. Les camps existants restent inchangés.
 6. Quand il y a au moins une personne de chaque côté et que chacun a accepté la dernière version, le créateur peut cliquer **Lancer le pari avec l’accord de tous**.
 7. Après confirmation, les participants, les camps et l’enjeu sont fixés. Le créateur peut programmer les rappels, archiver ou clôturer le pari.
 

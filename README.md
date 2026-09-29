@@ -2,7 +2,9 @@
 
 Application privée de paris entre amis, React/TypeScript + Vite, serveur Node.js 24 et PostgreSQL/Neon. PWA, avatars photo, comptes personnels, paris ouverts, camps volontaires, négociation d’enjeux, rappels Web Push et historique.
 
-**Mise à jour e-mail : lire `INSTRUCTIONS-RECUPERATION-EMAIL.md`.**
+**Dernière mise à jour : lire `INSTRUCTIONS-CAMPS-FIXES.md`.**
+
+Récupération e-mail : `INSTRUCTIONS-RECUPERATION-EMAIL.md`.
 
 Comptes et paris ouverts : `INSTRUCTIONS-COMPTES-ET-PARIS.md`.
 
@@ -27,7 +29,7 @@ Le démarrage applique les migrations SQL une fois, sous transaction PostgreSQL.
 - `app/page.tsx` : navigation responsive et gestion des paris/profils.
 - `app/negotiation.tsx` : participation, accords, contre-propositions et mot de passe.
 - `server/auth.ts`, `server/accounts.ts` : scrypt salé, sessions aléatoires hachées, cookies HttpOnly, invitations et reprise de profil par code à usage unique.
-- `app/api/data/route.ts` : règles métier et autorisations. Les changements sont sérialisés dans une transaction ; chaque version de l’enjeu et des camps nécessite des accords à jour.
+- `app/api/data/route.ts` : règles métier et autorisations. Les changements sont sérialisés dans une transaction ; les camps sont définitifs dès la participation. Chaque nouvelle proposition ou nouvel arrivant demande un nouvel accord sur l’enjeu. Les refus bloquent le lancement.
 - `server/recovery.ts`, `server/email.ts`, `app/recovery.tsx` : vérification des adresses et récupération par codes temporaires via Resend HTTPS.
 - `migrations/` : schéma, nettoyage des exemples, comptes et négociations.
 - `server/runtime.ts` : PostgreSQL avec TLS vérifié vers Neon, migrations et stockage des avatars.
