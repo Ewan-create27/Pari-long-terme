@@ -2,7 +2,9 @@
 
 Application privée de paris entre amis, React/TypeScript + Vite, serveur Node.js 24 et PostgreSQL/Neon. PWA, avatars photo, comptes personnels, paris ouverts, camps volontaires, négociation d’enjeux, rappels Web Push et historique.
 
-**Dernière mise à jour : lire `INSTRUCTIONS-AFFICHAGE-MOBILE.md`.**
+**Dernière mise à jour : lire `INSTRUCTIONS-ACCORDS-INDIVIDUELS.md`.**
+
+Affichage mobile : `INSTRUCTIONS-AFFICHAGE-MOBILE.md`.
 
 Camps définitifs : `INSTRUCTIONS-CAMPS-FIXES.md`.
 
