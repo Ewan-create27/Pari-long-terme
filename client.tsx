@@ -4,6 +4,7 @@ import App from './app/page';
 import {ForgotPassword} from './app/recovery';
 import {emojis} from './lib/model';
 import './app/globals.css';
+import './app/mobile-refresh.css';
 function Gate(){const [ready,setReady]=useState(false),[actor,setActor]=useState<any>(null),[mode,setMode]=useState('login'),[username,setUsername]=useState(''),[password,setPassword]=useState(''),[confirm,setConfirm]=useState(''),[email,setEmail]=useState(''),[name,setName]=useState(''),[avatar,setAvatar]=useState('😎'),[invite,setInvite]=useState(''),[claim,setClaim]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[adminPassword,setAdminPassword]=useState(''),[legacy,setLegacy]=useState<any[]>([]),[code,setCode]=useState('');
 async function refresh(){const r=await fetch('/api/session');if(!r.ok)throw Error('Connexion impossible.');const d=await r.json();setActor(d.actor);setReady(true);}
 useEffect(()=>{refresh().catch(()=>{setReady(true);setError('Connexion au serveur impossible. Réessaie.');});},[]);
